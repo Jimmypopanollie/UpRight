@@ -1,15 +1,13 @@
-# updated layout pass
-
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-st.toast("UpRight App refreshed 🎯", icon="🚀")
-
-
+# MUST be the first Streamlit command
 st.set_page_config(page_title="UpRight", page_icon="📈", layout="centered")
+
+# Safe to toast after page config
+st.toast("UpRight App refreshed 🎯", icon="🚀")
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
@@ -29,7 +27,7 @@ if section == "Feed":
     st.title("📲 UpRight Feed")
     for i in range(3):
         st.image("https://placehold.co/48x48", width=48)
-        st.markdown("**@anon_user{0}**".format(i + 1))
+        st.markdown(f"**@anon_user{i+1}**")
         st.text("Posted on: " + datetime.now().strftime("%b %d, %Y"))
         fig = px.bar(df, x="Category", y="Value", color="Category", color_discrete_sequence=df["Color"])
         st.plotly_chart(fig, use_container_width=True)
@@ -50,33 +48,4 @@ elif section == "My Chart":
 
     col1, col2 = st.columns(2)
     col1.metric("Income Growth", "+22.4%", "+3.5%")
-    col2.metric("Debt Reduction", "-8.7%", "-1.1%")
-
-    if chart_type == "Bar":
-        fig = px.bar(df, x="Category", y="Value", color="Category", color_discrete_sequence=df["Color"])
-    else:
-        fig = px.line(df, x="Category", y="Value")
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("📚 Abstract Metrics")
-    st.markdown("""
-    - Books Read: 28  
-    - Courses Completed: 5  
-    - Family Time Logged: 18 hrs/week  
-    - Projects Finished: 3  
-    """)
-
-# -------------------------------
-# 🔍 EXPLORE SECTION
-# -------------------------------
-elif section == "Explore":
-    st.title("🔍 Explore Users")
-    st.markdown("Coming soon: trending profiles, new milestones, and supporter leaderboard.")
-
-# -------------------------------
-# 🔔 NOTIFICATIONS SECTION
-# -------------------------------
-elif section == "Notifications":
-    st.title("🔔 Notifications")
-    st.markdown("Coming soon: support credits received, followers, and milestone badges.")
+    col2
