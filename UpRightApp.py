@@ -6,6 +6,9 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
+st.toast("UpRight App refreshed 🎯", icon="🚀")
+
+
 st.set_page_config(page_title="UpRight", page_icon="📈", layout="centered")
 
 # Sidebar navigation
