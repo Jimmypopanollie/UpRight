@@ -1,68 +1,76 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime import datetime
 
 st.set_page_config(page_title="UpRight", page_icon="📈", layout="centered")
 
-st.title("📈 UpRight: Your Life as a Chart")
-st.write("Welcome to the UpRight Social Tracker!")
-
-
-# Sidebar Navigation
+# Sidebar navigation
 st.sidebar.title("Navigation")
-section = st.sidebar.radio("Go to", ["My Chart", "Explore", "Notifications"])
+section = st.sidebar.radio("Go to", ["Feed", "My Chart", "Explore", "Notifications"])
 
-# Dummy data for charts
+# Dummy data
 df = pd.DataFrame({
     "Category": ["Income", "Assets", "Education", "Debt"],
     "Value": [52000, 140000, 12, 3500],
     "Color": ["green", "blue", "yellow", "red"]
 })
 
-# My Chart Section
-if section == "My Chart":
-    st.subheader("📊 Personal Growth Overview")
+# -------------------------------
+# 📲 FEED SECTION
+# -------------------------------
+if section == "Feed":
+    st.title("📲 UpRight Feed")
+    for i in range(3):
+        st.image("https://placehold.co/48x48", width=48)
+        st.markdown("**@anon_user{0}**".format(i + 1))
+        st.text("Posted on: " + datetime.now().strftime("%b %d, %Y"))
+        fig = px.bar(df, x="Category", y="Value", color="Category", color_discrete_sequence=df["Color"])
+        st.plotly_chart(fig, use_container_width=True)
+        st.text("Income Growth: +22.4% • Debt Reduction: -8.7%")
+        st.radio("React", ["🔥", "💡", "🙌", "💰"], key=f"react_{i}", horizontal=True)
+        st.text_input("Leave a comment:", key=f"comment_{i}")
+        st.markdown("---")
+
+# -------------------------------
+# 📈 DASHBOARD SECTION
+# -------------------------------
+elif section == "My Chart":
+    st.title("📈 UpRight: Your Life as a Chart")
+    st.write("Welcome to the UpRight Social Tracker!")
+
+    chart_type = st.radio("Select chart type", ["Bar", "Line"], horizontal=True)
+    time_range = st.selectbox("Time Range", ["1W", "1M", "1Y", "All"])
+
     col1, col2 = st.columns(2)
     col1.metric("Income Growth", "+22.4%", "+3.5%")
     col2.metric("Debt Reduction", "-8.7%", "-1.1%")
 
-    fig = px.bar(df, x="Category", y="Value", color="Category",
-                 color_discrete_map={"Income":"green", "Assets":"blue", "Education":"yellow", "Debt":"red"})
+    if chart_type == "Bar":
+        fig = px.bar(df, x="Category", y="Value", color="Category", color_discrete_sequence=df["Color"])
+    else:
+        fig = px.line(df, x="Category", y="Value")
+
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("---")
-    st.write("### 📘 Abstract Metrics")
-    st.write("- Books Read: 28")
-    st.write("- Certifications Completed: 3")
-    st.write("- Projects Launched: 6")
-    st.write("- Family Time Tracked: 162 hrs")
+    st.subheader("📚 Abstract Metrics")
+    st.markdown("""
+    - Books Read: 28  
+    - Courses Completed: 5  
+    - Family Time Logged: 18 hrs/week  
+    - Projects Finished: 3  
+    """)
 
-# Explore Section
+# -------------------------------
+# 🔍 EXPLORE SECTION
+# -------------------------------
 elif section == "Explore":
-    st.subheader("🌍 Explore Profiles")
-    profiles = [
-        {"name": "@EcoChloe", "title": "Sustainable Designer", "vibes": "🌱 Design / Impact"},
-        {"name": "@ByteSmith", "title": "Indie Developer", "vibes": "💻 Code / Web3"},
-        {"name": "@NovaFlux", "title": "Crypto Creator", "vibes": "🧬 AI / Crypto"}
-    ]
+    st.title("🔍 Explore Users")
+    st.markdown("Coming soon: trending profiles, new milestones, and supporter leaderboard.")
 
-    for profile in profiles:
-        st.markdown(f"**{profile['name']}** — {profile['title']}  ")
-        st.caption(profile['vibes'])
-        st.button(f"Support {profile['name']}", key=profile['name'])
-        st.markdown("---")
-
-# Notifications Section
+# -------------------------------
+# 🔔 NOTIFICATIONS SECTION
+# -------------------------------
 elif section == "Notifications":
-    st.subheader("🔔 Notifications")
-    notifications = [
-        "AlexRobot invested 250 Support Credits in you!",
-        "Janelle commented on your income chart.",
-        "Mateo followed your anonymous profile.",
-        "You hit a milestone: 10 projects completed!"
-    ]
-
-    for note in notifications:
-        st.success(note)
-
-
+    st.title("🔔 Notifications")
+    st.markdown("Coming soon: support credits received, followers, and milestone badges.")
