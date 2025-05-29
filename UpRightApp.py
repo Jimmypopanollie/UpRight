@@ -1,4 +1,11 @@
-UpRight App
+import streamlit as st
+
+st.set_page_config(page_title="UpRight App", layout="centered")
+st.title("UpRight App")
+
+st.write("Welcome to the UpRight Social Tracker!")
+
+
 
 import streamlit as st
 import pandas as pd
