@@ -71,3 +71,5 @@ elif section == "Notifications":
 
     for note in notifications:
         st.success(note)
+
+
