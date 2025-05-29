@@ -1,19 +1,12 @@
 import streamlit as st
-
-st.set_page_config(page_title="UpRight App", layout="centered")
-st.title("UpRight App")
-
-st.write("Welcome to the UpRight Social Tracker!")
-
-
-
-import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# App Config
 st.set_page_config(page_title="UpRight", page_icon="📈", layout="centered")
+
 st.title("📈 UpRight: Your Life as a Chart")
+st.write("Welcome to the UpRight Social Tracker!")
+
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
