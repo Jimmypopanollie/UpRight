@@ -1,413 +1,441 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# UpRightApp.py
-#
-# A refined, complete Streamlit app that mimics a Coinbase-like “Feed” page,
-# plus your existing “My Chart,” “Explore,” and “Notifications” sections.
-# ─────────────────────────────────────────────────────────────────────────────
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 0) PAGE CONFIGURATION
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# PAGE CONFIGURATION (must be first Streamlit command)
+# ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="UpRight", 
-    page_icon="📈", 
+    page_title="UpRight",
+    page_icon="🤖",
     layout="wide",
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1) CSS & BASIC STYLES
-# ─────────────────────────────────────────────────────────────────────────────
-# We inject a style block at the top so all classes below take effect.
-# Feel free to tweak colors, paddings, and fonts to your preference.
+# ──────────────────────────────────────────────────────────────────────────────
+# THEME CSS INJECTION: Primary colors (red, blue, yellow) + accent green
+# ──────────────────────────────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
-    /* ───── Hide default Streamlit menu/border on top ───── */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-
-    /* ───── Sidebar Heading ───── */
-    .sidebar .sidebar-content {
-      padding-top: 1.5rem;
+    /* ---------- Typography & Background ---------- */
+    body {
+        background-color: #F9FAFB;
+        color: #1F2937;
+        font-family: "Segoe UI", sans-serif;
     }
-    .sidebar .sidebar-content h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
+    /* ---------- Sidebar ---------- */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E5E7EB;
     }
-
-    /* ───── Moments Bar Container ───── */
-    .moments-bar {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-      overflow-x: auto;
-      padding-bottom: 0.5rem;
+    /* ---------- Buttons ---------- */
+    .stButton>button {
+        background-color: #3B82F6;  /* Blue primary */
+        color: white;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
     }
-    .moments-bar::-webkit-scrollbar {
-      height: 6px;
+    .stButton>button:hover {
+        background-color: #2563EB;
+        color: #FFFFFF;
     }
-    .moments-bar::-webkit-scrollbar-thumb {
-      background: #CBD5E0;
-      border-radius: 3px;
+    /* ---------- Input fields ---------- */
+    input[type="text"], input[type="number"], textarea {
+        border: 1px solid #D1D5DB !important;
+        border-radius: 4px !important;
+        padding: 0.5rem !important;
     }
-
-    /* ───── Each “Moment” Box ───── */
-    .moment {
-      flex: 0 0 auto;
-      padding: 1rem 1.25rem;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      font-size: 1rem;
-      color: #111827;
-      cursor: pointer;
-      transition: opacity 0.2s ease;
-      min-width: 120px;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    /* ---------- Metrics ---------- */
+    .stMetricValue {
+        color: #10B981;  /* Accent green for positive by default */
+        font-size: 2rem;
+        font-weight: 700;
     }
-    .moment:hover {
-      opacity: 0.85;
+    /* ---------- Section Headers ---------- */
+    h1, h2, h3, h4, h5 {
+        color: #111827;
     }
-
-    /* ───── Feed “Card” ───── */
-    .card {
-      background-color: #FFFFFF;
-      border: 1px solid #E5E7EB;
-      border-radius: 0.75rem;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 1.25rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    /* ---------- Profile Picture ---------- */
+    .profile-avatar {
+        border-radius: 50%;
+        border: 2px solid #10B981;
     }
-
-    /* ───── Avatar Circle ───── */
-    .avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid #E5E7EB;
-    }
-
-    /* ───── Reaction Buttons (native Streamlit buttons) ───── */
-    /* We’ll simply style the <button> that Streamlit renders. */
-    button.stButton {
-      margin: 0;
-      padding: 0.5rem;
-      font-size: 1.125rem;
-      border-radius: 0.375rem;
-      border: 1px solid transparent;
-      background-color: #F3F4F6;
-      transition: background-color 0.15s ease;
-    }
-    button.stButton:hover {
-      background-color: #E5E7EB;
-    }
-
-    /* ───── Comment Input (pure HTML <input>) ───── */
-    .comment-input {
-      width: 100%;
-      padding: 0.5rem 0.75rem;
-      margin-top: 0.75rem;
-      border: 1px solid #CBD5E0;
-      border-radius: 0.375rem;
-      font-size: 0.95rem;
-      color: #374151;
-    }
-    .comment-input:focus {
-      outline: none;
-      border-color: #3B82F6;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
-    }
-
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2) CONSTANTS & DUMMY DATA
-# ─────────────────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# SESSION STATE INITIALIZATION
+# ──────────────────────────────────────────────────────────────────────────────
+if "profile_created" not in st.session_state:
+    st.session_state.profile_created = False
 
-# (A) Accent colors for “growth” text:
-ACCENT_GREEN = "#16A34A"  # green‐600
-ACCENT_RED   = "#DC2626"  # red‐600
+if "profile" not in st.session_state:
+    st.session_state.profile = {
+        "username": "",
+        "full_name": "",
+        "photo_url": None,  # will store URL or None
+    }
 
-# (B) The DataFrame underlying every bar chart in the Feed:
-df_main = pd.DataFrame({
-    "Category": ["Income", "Assets", "Education", "Debt"],
-    "Value":    [52000, 140000, 12, 3500],
-    "Color":    ["green", "blue", "yellow", "red"],
-})
+if "indicators" not in st.session_state:
+    # store main indicators and abstract metrics
+    st.session_state.indicators = {
+        "income": 0.0,
+        "assets": 0.0,
+        "debt": 0.0,
+        "net_worth": 0.0,
+        "accolades": "",
+        "books_read": 0,
+        "courses_completed": 0,
+        "family_time": 0.0,  # hours/week
+        "projects_finished": 0,
+    }
 
-# (C) A list of “moments” to show in the top bar of the Feed.
-#     In a real app, you might fetch these from a database or API.
-moments = [
-    {"label": "Moment 1", "color": "#FCA5A5"},  # red‐300
-    {"label": "Moment 2", "color": "#93C5FD"},  # blue‐300
-    {"label": "Moment 3", "color": "#86EFAC"},  # green‐300
-    {"label": "Moment 4", "color": "#FEF9C3"},  # yellow‐300
-    {"label": "Moment 5", "color": "#E9D5FF"},  # purple‐300
-]
+# ──────────────────────────────────────────────────────────────────────────────
+# DEFAULT ROBOT AVATAR (iStock‐style)
+# ──────────────────────────────────────────────────────────────────────────────
+DEFAULT_AVATAR_URL = "https://placehold.co/100x100?text=🤖&bg=10B981&fg=FFFFFF"
 
-# (D) Dummy “feed” posts. Each entry becomes one “card” in the Feed.
-#     The “chart_key” must be unique for each Plotly chart to avoid duplicate IDs.
-dummy_posts = [
-    {
-        "avatar_url":  "https://placehold.co/48x48", 
-        "username":    "anon_user_1",
-        "followers":   "1,000 followers",
-        "posted_on":   "May 31, 2025 • 06:45 PM",
-        "income_pct":  "+22.4%",
-        "income_delta":"+3.5%",
-        "debt_pct":    "-8.7%",
-        "debt_delta":  "-1.1%",
-        "chart_key":   "chart_0",
-    },
-    {
-        "avatar_url":  "https://placehold.co/48x48", 
-        "username":    "anon_user_2",
-        "followers":   "1,250 followers",
-        "posted_on":   "May 31, 2025 • 07:15 PM",
-        "income_pct":  "+18.9%",
-        "income_delta":"+2.8%",
-        "debt_pct":    "-5.3%",
-        "debt_delta":  "-0.5%",
-        "chart_key":   "chart_1",
-    },
-    {
-        "avatar_url":  "https://placehold.co/48x48", 
-        "username":    "anon_user_3",
-        "followers":   "980 followers",
-        "posted_on":   "May 31, 2025 • 07:42 PM",
-        "income_pct":  "+10.2%",
-        "income_delta":"+1.1%",
-        "debt_pct":    "-2.0%",
-        "debt_delta":  "-0.2%",
-        "chart_key":   "chart_2",
-    },
-]
+# ──────────────────────────────────────────────────────────────────────────────
+# PROFILE CREATION FORM
+# ──────────────────────────────────────────────────────────────────────────────
+def show_profile_creation():
+    st.title("Welcome to UpRight")
+    st.write("Let's create your profile to get started!")
+    st.markdown("---")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3) SIDEBAR NAVIGATION
-# ─────────────────────────────────────────────────────────────────────────────
-st.sidebar.markdown("<h1>👋 Welcome to<br>UpRight</h1>", unsafe_allow_html=True)
-st.sidebar.markdown("<small style='color:#6B7280;'>Go to</small>", unsafe_allow_html=True)
-section = st.sidebar.radio(
-    label="",
-    options=["Feed", "My Chart", "Explore", "Notifications"],
-    index=0,
-    label_visibility="collapsed",
-)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 4) FEED SECTION (WITH “MOMENTS” BAR + CARDS)
-# ─────────────────────────────────────────────────────────────────────────────
-if section == "Feed":
-    # Title
-    st.markdown("<h1>📱 UpRight Feed</h1>", unsafe_allow_html=True)
-
-    # -- 4a) Pure‐HTML Moments Bar (no st.button) --
-    if "selected_moment" not in st.session_state:
-        st.session_state.selected_moment = None
-
-    # Build HTML for each moment box. When clicked, it issues a postMessage with {type:"CUSTOM_EVENT", midx: <idx>}.
-    moments_html = ""
-    for idx, moment in enumerate(moments):
-        label = moment["label"]
-        bgcol = moment["color"]
-        moments_html += f"""
-            <div
-              class="moment"
-              style="background-color: {bgcol};"
-              onclick="window.parent.postMessage(
-                {{ 'type': 'CUSTOM_EVENT', 'midx': {idx} }}, '*'
-              );"
-            >
-              {label}
-            </div>
-        """
-
-    # Wrap them in a horizontal flex container
-    st.markdown(f'<div class="moments-bar">{moments_html}</div>', unsafe_allow_html=True)
-
-    # Register a dummy query params call so Streamlit’s front-end will catch our postMessage
-    _ = st.experimental_get_query_params()
-    # If the front-end just posted a CUSTOM_EVENT with midx, Streamlit sees it here:
-    qp = st.experimental_get_query_params()
-    if qp and "midx" in qp:
-        try:
-            sel_idx = int(qp["midx"][0])
-            st.session_state.selected_moment = sel_idx
-        except:
-            pass
-
-    # Optional: show which moment is selected
-    if st.session_state.selected_moment is not None:
-        sel = st.session_state.selected_moment
-        sel_label = moments[sel]["label"]
-        st.markdown(
-            f"<p style='font-size:0.9rem; color:#6B7280;'>"
-            f"Showing posts for <strong>{sel_label}</strong>.</p>",
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # -- 4b) Render each dummy post as a “card” --
-    for i, post in enumerate(dummy_posts):
-        with st.container():
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-
-            # Header: Avatar + username/followers + timestamp
-            hcol1, hcol2, hcol3 = st.columns([1, 5, 3], gap="small")
-            with hcol1:
-                st.markdown(
-                    f'<img src="{post["avatar_url"]}" class="avatar">',
-                    unsafe_allow_html=True,
-                )
-            with hcol2:
-                st.markdown(
-                    f"""
-                    <div style="display:flex; flex-direction:column; gap:4px;">
-                      <span style="font-weight:600;">@{post["username"]}</span>
-                      <span style="font-size:0.9rem; color:#6B7280;">{post["followers"]}</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            with hcol3:
-                st.markdown(
-                    f"<span style='font-size:0.9rem; color:#9CA3AF;'>{post['posted_on']}</span>",
-                    unsafe_allow_html=True,
-                )
-
-            # Divider
-            st.markdown("<hr style='border-color:#E5E7EB;'>", unsafe_allow_html=True)
-
-            # In-Post Bar Chart (unique key per post)
-            fig_feed = px.bar(
-                df_main,
-                x="Category",
-                y="Value",
-                color="Category",
-                color_discrete_sequence=df_main["Color"],
-                template="none",
+    with st.form(key="profile_form"):
+        col1, col2 = st.columns((1, 2), gap="large")
+        with col1:
+            st.markdown("**Upload a Profile Photo**")
+            photo_uploader = st.file_uploader(
+                "Choose an image (JPG/PNG)", type=["jpg", "png"], accept_multiple_files=False
             )
-            fig_feed.update_layout(
-                margin=dict(l=0, r=0, t=0, b=0),
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                height=180,
-                xaxis=dict(showgrid=False, tickfont=dict(size=11)),
-                yaxis=dict(showgrid=False, tickfont=dict(size=11)),
+            if photo_uploader is not None:
+                # Display the uploaded image
+                photo_bytes = photo_uploader.read()
+                st.image(photo_bytes, caption="Your Uploaded Photo", width=100, use_column_width=False)
+                # We'll temporarily store this photo in session_state as bytes
+                st.session_state.profile["photo_url"] = photo_bytes
+        with col2:
+            st.text_input(
+                "Username",
+                key="profile_username",
+                placeholder="e.g., john_doe",
             )
-            st.plotly_chart(fig_feed, use_container_width=True, key=post["chart_key"])
+            st.text_input(
+                "Full Name",
+                key="profile_full_name",
+                placeholder="e.g., John Doe",
+            )
+            st.text_area(
+                "Short Bio / Accolades",
+                key="profile_accolades",
+                help="Share a few lines about yourself or your accolades",
+                placeholder="I’m a finance enthusiast, avid reader, and life‐long learner..."
+            )
+        submitted = st.form_submit_button(label="Create Profile", type="primary")
+        if submitted:
+            # Validate inputs
+            if st.session_state.profile_username.strip() == "" or st.session_state.profile_full_name.strip() == "":
+                st.error("Username and Full Name cannot be empty.")
+            else:
+                # Save profile information
+                st.session_state.profile["username"] = st.session_state.profile_username.strip()
+                st.session_state.profile["full_name"] = st.session_state.profile_full_name.strip()
+                # If user didn't upload a photo, use default
+                if st.session_state.profile.get("photo_url") is None:
+                    st.session_state.profile["photo_url"] = DEFAULT_AVATAR_URL
+                # Save accolades
+                st.session_state.indicators["accolades"] = st.session_state.profile_accolades
+                st.session_state.profile_created = True
+                st.success("Profile created successfully! Welcome aboard 🎉")
+                st.experimental_rerun()
 
-            # Growth Stats
-            st.markdown(
-                f"""
-                <div style="display:flex; justify-content:space-between; margin-top:12px;">
-                  <div>
-                    <span style="font-size:1rem; color:{ACCENT_GREEN}; font-weight:600;">Income Growth: {post['income_pct']}</span>
-                    <span style="font-size:0.9rem; color:{ACCENT_GREEN};"> ▲ {post['income_delta']}</span>
-                  </div>
-                  <div>
-                    <span style="font-size:1rem; color:{ACCENT_RED}; font-weight:600;">Debt Reduction: {post['debt_pct']}</span>
-                    <span style="font-size:0.9rem; color:{ACCENT_RED};"> ▼ {post['debt_delta']}</span>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PROFILE EDIT FORM
+# ──────────────────────────────────────────────────────────────────────────────
+def show_profile_edit():
+    st.title("Edit Your Profile")
+    st.markdown("---")
+
+    with st.form(key="edit_profile_form"):
+        col1, col2 = st.columns((1, 2), gap="large")
+        with col1:
+            st.markdown("**Change Profile Photo**")
+            photo_uploader = st.file_uploader(
+                "Upload a new image (JPG/PNG)", type=["jpg", "png"], accept_multiple_files=False
+            )
+            if photo_uploader is not None:
+                photo_bytes = photo_uploader.read()
+                st.image(photo_bytes, caption="Preview", width=100, use_column_width=False)
+        with col2:
+            new_username = st.text_input(
+                "Username",
+                value=st.session_state.profile["username"],
+                placeholder="e.g., john_doe",
+                key="edit_username",
+            )
+            new_full_name = st.text_input(
+                "Full Name",
+                value=st.session_state.profile["full_name"],
+                placeholder="e.g., John Doe",
+                key="edit_full_name",
+            )
+            new_accolades = st.text_area(
+                "Short Bio / Accolades",
+                value=st.session_state.indicators["accolades"],
+                help="Share a few lines about yourself or your accolades",
+                key="edit_accolades",
+            )
+        submitted = st.form_submit_button(label="Save Changes", type="primary")
+        if submitted:
+            if new_username.strip() == "" or new_full_name.strip() == "":
+                st.error("Username and Full Name cannot be empty.")
+            else:
+                st.session_state.profile["username"] = new_username.strip()
+                st.session_state.profile["full_name"] = new_full_name.strip()
+                st.session_state.indicators["accolades"] = new_accolades.strip()
+                if photo_uploader is not None:
+                    st.session_state.profile["photo_url"] = photo_bytes
+                st.success("Profile updated successfully!")
+                st.experimental_rerun()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# NAVIGATION: Build sidebar with profile summary + section selection
+# ──────────────────────────────────────────────────────────────────────────────
+def show_sidebar_nav():
+    profile = st.session_state.profile
+    avatar = profile["photo_url"]
+    if isinstance(avatar, (bytes, bytearray)):
+        st.sidebar.image(avatar, width=80, use_column_width=False, caption=None, output_format="PNG", className="profile-avatar")
+    else:
+        # If avatar is a URL
+        st.sidebar.image(avatar, width=80, use_column_width=False, caption=None, className="profile-avatar")
+
+    st.sidebar.markdown(f"**{profile['full_name']}**")
+    st.sidebar.markdown(f"@{profile['username']}")
+    st.sidebar.markdown("---")
+
+    choice = st.sidebar.radio(
+        "Go to",
+        ["Dashboard", "Edit Profile", "Feed", "Explore", "Notifications"],
+        index=0,
+    )
+    return choice
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DASHBOARD (“My Chart”) SECTION
+# ──────────────────────────────────────────────────────────────────────────────
+def show_dashboard():
+    st.title("📊 Dashboard")
+    st.markdown("---")
+    st.write("Update your main indicators below, then view your life as a chart.")
+
+    with st.form(key="indicators_form"):
+        col1, col2, col3 = st.columns(3, gap="large")
+        with col1:
+            income_val = st.number_input(
+                "📈 Income",
+                min_value=0.0,
+                format="%.2f",
+                value=st.session_state.indicators["income"],
+                key="income_input",
+            )
+            assets_val = st.number_input(
+                "💼 Assets",
+                min_value=0.0,
+                format="%.2f",
+                value=st.session_state.indicators["assets"],
+                key="assets_input",
+            )
+            debt_val = st.number_input(
+                "💳 Debt",
+                min_value=0.0,
+                format="%.2f",
+                value=st.session_state.indicators["debt"],
+                key="debt_input",
+            )
+        with col2:
+            net_worth_val = st.number_input(
+                "🪙 Net Worth",
+                min_value=0.0,
+                format="%.2f",
+                value=st.session_state.indicators["net_worth"],
+                key="networth_input",
+            )
+            books_read_val = st.number_input(
+                "📚 Books Read",
+                min_value=0,
+                value=st.session_state.indicators["books_read"],
+                step=1,
+                key="books_input",
+            )
+            courses_val = st.number_input(
+                "🎓 Courses Completed",
+                min_value=0,
+                value=st.session_state.indicators["courses_completed"],
+                step=1,
+                key="courses_input",
+            )
+        with col3:
+            family_time_val = st.number_input(
+                "👪 Family Time (hrs/week)",
+                min_value=0.0,
+                format="%.1f",
+                value=st.session_state.indicators["family_time"],
+                key="family_input",
+            )
+            projects_val = st.number_input(
+                "🚀 Projects Finished",
+                min_value=0,
+                value=st.session_state.indicators["projects_finished"],
+                step=1,
+                key="projects_input",
+            )
+            accolades_val = st.text_area(
+                "🏆 Accolades / Short Bio",
+                value=st.session_state.indicators["accolades"],
+                key="accolades_input",
+                help="Share new accomplishments or notes",
             )
 
-            # Reaction Buttons (each as a native Streamlit button with a unique key)
-            rcol1, rcol2, rcol3, rcol4 = st.columns([1, 1, 1, 1], gap="small")
-            with rcol1:
-                if st.button("🔥", key=f"react_fire_{i}"):
-                    pass
-            with rcol2:
-                if st.button("💡", key=f"react_idea_{i}"):
-                    pass
-            with rcol3:
-                if st.button("🙌", key=f"react_praise_{i}"):
-                    pass
-            with rcol4:
-                if st.button("💰", key=f"react_money_{i}"):
-                    pass
+        submitted = st.form_submit_button(label="Save Indicators", type="primary")
+        if submitted:
+            # Update session state with new values
+            st.session_state.indicators["income"] = income_val
+            st.session_state.indicators["assets"] = assets_val
+            st.session_state.indicators["debt"] = debt_val
+            st.session_state.indicators["net_worth"] = net_worth_val
+            st.session_state.indicators["books_read"] = books_read_val
+            st.session_state.indicators["courses_completed"] = courses_val
+            st.session_state.indicators["family_time"] = family_time_val
+            st.session_state.indicators["projects_finished"] = projects_val
+            st.session_state.indicators["accolades"] = accolades_val
+            st.success("Indicators saved!")
+            st.experimental_rerun()
 
-            # Comment Input (pure HTML <input>, identified by id="comment_i")
-            st.markdown(
-                f"""
-                <input 
-                  type="text" 
-                  placeholder="Leave a comment..." 
-                  class="comment-input" 
-                  id="comment_{i}"
-                >
-                """,
-                unsafe_allow_html=True,
-            )
+    st.markdown("---")
+    st.subheader("📈 Your Life as a Chart")
 
-            # Close the card
-            st.markdown("</div>", unsafe_allow_html=True)
+    # Build a DataFrame from session_state.indicators
+    data = {
+        "Category": ["Income", "Assets", "Debt", "Net Worth", "Books Read", "Courses", "Family Time", "Projects"],
+        "Value": [
+            st.session_state.indicators["income"],
+            st.session_state.indicators["assets"],
+            st.session_state.indicators["debt"],
+            st.session_state.indicators["net_worth"],
+            st.session_state.indicators["books_read"],
+            st.session_state.indicators["courses_completed"],
+            st.session_state.indicators["family_time"],
+            st.session_state.indicators["projects_finished"],
+        ],
+    }
+    chart_df = pd.DataFrame(data)
 
+    # Default to Line chart (index=1)
+    chart_type = st.radio(
+        "Select chart style:",
+        ["Bar", "Line"],
+        index=1,
+        horizontal=True,
+        key="dashboard_chart_type",
+    )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5) “My Chart” (Dashboard) SECTION
-# ─────────────────────────────────────────────────────────────────────────────
-elif section == "My Chart":
-    st.markdown("<h1>📈 UpRight: Your Life as a Chart</h1>", unsafe_allow_html=True)
-    st.write("Welcome to the UpRight Social Tracker!")
-
-    # Chart type & time-range selectors
-    chart_type = st.radio("Select chart type", ["Bar", "Line"], horizontal=True)
-    time_range = st.selectbox("Time Range", ["1W", "1M", "1Y", "All"])
-
-    col1, col2 = st.columns(2)
-    col1.metric("Income Growth", "+22.4%", "+3.5%")
-    col2.metric("Debt Reduction", "-8.7%", "-1.1%")
-
-    # Show either a Bar or Line chart
     if chart_type == "Bar":
-        fig2 = px.bar(
-            df_main, 
-            x="Category", 
-            y="Value", 
-            color="Category", 
-            color_discrete_sequence=df_main["Color"],
+        fig = px.bar(
+            chart_df,
+            x="Category",
+            y="Value",
+            color="Category",
+            color_discrete_sequence=["#EF4444", "#3B82F6", "#FACC15", "#10B981", "#3B82F6", "#EF4444", "#10B981", "#FACC15"],
+            height=450,
         )
     else:
-        fig2 = px.line(df_main, x="Category", y="Value")
+        fig = px.line(
+            chart_df,
+            x="Category",
+            y="Value",
+            markers=True,
+            color_discrete_sequence=["#10B981"],
+            height=450,
+        )
 
-    st.plotly_chart(fig2, use_container_width=True)
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=20, b=20),
+        xaxis_title=None,
+        yaxis_title="Value",
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#F9FAFB",
+        font=dict(color="#1F2937"),
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Abstract Metrics
-    st.subheader("📚 Abstract Metrics")
-    st.markdown("""
-    - Books Read: 28  
-    - Courses Completed: 5  
-    - Family Time Logged: 18 hrs/week  
-    - Projects Finished: 3  
-    """)
+    # Display "Abstract Metrics" summary below the chart
+    st.markdown("---")
+    st.subheader("📋 Summary of Abstract Metrics")
+    st.write(f"**Accolades / Bio:** {st.session_state.indicators['accolades']}")
+    col_a, col_b, col_c = st.columns(3, gap="large")
+    with col_a:
+        st.metric(label="Books Read", value=st.session_state.indicators["books_read"])
+    with col_b:
+        st.metric(label="Courses Completed", value=st.session_state.indicators["courses_completed"])
+    with col_c:
+        st.metric(label="Family Time (hrs/week)", value=f"{st.session_state.indicators['family_time']:.1f}")
 
+    st.markdown("---")
+    st.write("🚀 Keep these numbers up to date to see your progress grow over time!")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6) EXPLORE SECTION
-# ─────────────────────────────────────────────────────────────────────────────
-elif section == "Explore":
-    st.markdown("<h1>🔍 Explore Users</h1>", unsafe_allow_html=True)
-    st.markdown("Coming soon: trending profiles, new milestones, and supporter leaderboard.")
+# ──────────────────────────────────────────────────────────────────────────────
+# FEED SECTION (Placeholder / Minimal Implementation)
+# ──────────────────────────────────────────────────────────────────────────────
+def show_feed():
+    st.title("📱 UpRight Feed")
+    st.markdown("---")
+    st.write("Your personal feed will appear here soon! For now, feel free to snap a screenshot of your Dashboard chart and share it to social media.")
+    st.write("Stay tuned: we’re building a full social experience—moments, reactions, comments—just like your favorite apps.")
 
+# ──────────────────────────────────────────────────────────────────────────────
+# EXPLORE SECTION (Placeholder)
+# ──────────────────────────────────────────────────────────────────────────────
+def show_explore():
+    st.title("🔍 Explore")
+    st.markdown("---")
+    st.write("Discover trending profiles and connect with other UpRight users. Coming soon!")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 7) NOTIFICATIONS SECTION
-# ─────────────────────────────────────────────────────────────────────────────
-elif section == "Notifications":
-    st.markdown("<h1>🔔 Notifications</h1>", unsafe_allow_html=True)
-    st.markdown("Coming soon: support credits received, followers, and milestone badges.")
+# ──────────────────────────────────────────────────────────────────────────────
+# NOTIFICATIONS SECTION (Placeholder)
+# ──────────────────────────────────────────────────────────────────────────────
+def show_notifications():
+    st.title("🔔 Notifications")
+    st.markdown("---")
+    st.write("You will see notifications here when someone interacts with your feed or follows you. Coming soon!")
+
+# ──────────────────────────────────────────────────────────────────────────────
+# MAIN APP LOGIC
+# ──────────────────────────────────────────────────────────────────────────────
+
+if not st.session_state.profile_created:
+    # If the user has not created a profile yet, show the creation form
+    show_profile_creation()
+else:
+    # Once profile is created, show sidebar + chosen section
+    choice = show_sidebar_nav()
+
+    if choice == "Dashboard":
+        show_dashboard()
+    elif choice == "Edit Profile":
+        show_profile_edit()
+    elif choice == "Feed":
+        show_feed()
+    elif choice == "Explore":
+        show_explore()
+    elif choice == "Notifications":
+        show_notifications()
